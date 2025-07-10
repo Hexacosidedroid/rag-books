@@ -8,7 +8,6 @@ import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.stereotype.Service
-Primport reactor.core.publisher.Flux
 
 @Service
 class ChatService(
