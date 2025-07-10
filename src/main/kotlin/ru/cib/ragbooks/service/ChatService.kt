@@ -8,6 +8,7 @@ import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.stereotype.Service
+Primport reactor.core.publisher.Flux
 
 @Service
 class ChatService(
@@ -17,11 +18,13 @@ class ChatService(
     val log: Logger = LoggerFactory.getLogger(IngestionService::class.java)
     private companion object {
         const val SYSTEM_PROMPT_TEMPLATE = """
-            You are a Docker, Docker architecture and Docker security expert. 
-            Answer ONLY about Docker, Docker architecture and Docker security using the provided context.
-            If question is unrelated - decline to answer.
-            
-            Context:
+            You are a Docker security expert. Answer ONLY using the provided context.
+            Rules:
+            1. If question is unrelated to Docker - respond "I only answer Docker questions"
+            2. If context doesn't contain needed information - say "No relevant data in my documentation"
+            3. Be extremely concise and technical
+            4. ALWAYS reference page number if available
+            Context from Docker Security Guide:
             {context}
         """
     }
@@ -40,7 +43,6 @@ class ChatService(
                 .query(question)
                 .build()
         )
-        // 3. Дополнительная проверка релевантности документов
         if (relevantDocs.isNullOrEmpty() || !isDockerContext(relevantDocs)) {
             log.warn("No relevant Docker context found for: $question")
             return "I couldn't find relevant Docker information. Please ask a Docker-specific question."
@@ -60,8 +62,10 @@ class ChatService(
     }
 
     private fun isDockerRelated(question: String): Boolean {
-        val dockerKeywords = listOf("docker", "container", "image", "registry", "daemon",
-            "compose", "swarm", "kubernetes", "security")
+        val dockerKeywords = listOf(
+            "docker", "container", "image", "registry", "daemon",
+            "compose", "swarm", "kubernetes", "security"
+        )
         return dockerKeywords.any { keyword ->
             question.contains(keyword, ignoreCase = true)
         }

@@ -2,6 +2,7 @@ package ru.cib.ragbooks.service
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.ai.document.Document
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader
 import org.springframework.ai.transformer.splitter.TokenTextSplitter
 import org.springframework.ai.vectorstore.VectorStore
@@ -17,22 +18,27 @@ class IngestionService(
 ) {
     val log: Logger = LoggerFactory.getLogger(IngestionService::class.java)
 
-   fun loadPdf() {
-       val pdf = PagePdfDocumentReader(book)
-       val pages = pdf.get()
-       pages.chunked(10).forEach { chunk ->
-           log.info("Loading page $chunk")
-           val textSplitter = TokenTextSplitter
-               .builder()
-               .withChunkSize(1000)
-               .withMinChunkLengthToEmbed(0)
-               .withMinChunkSizeChars(0)
-               .build()
-           vectorStore.accept(textSplitter.apply(chunk))
-           log.info("VectorStore Loaded with chunk!")
-           Thread.sleep(500)
-       }
-       log.info("VectorStore Loaded with full data!")
-   }
+    fun loadPdf() {
+        val pdf = PagePdfDocumentReader(book)
+        val pages = pdf.get()
+        pages.forEach { doc ->
+            log.info("Loading page $doc")
+            val textSplitter = TokenTextSplitter
+                .builder()
+                .withChunkSize(1000)
+                .build()
+            val document = textSplitter.apply(listOf(cleanText(doc)))
+            vectorStore.accept(document)
+            log.info("VectorStore Loaded with chunk!")
+            Thread.sleep(1000)
+        }
+        log.info("VectorStore Loaded with full data!")
+    }
 
+    fun cleanText(doc: Document): Document {
+        val cleanDoc = doc.text
+            ?.replace(Regex("(\\w+[‐-])\\s*\\R\\s*(\\w+)"), "")
+            ?.replace(Regex("\\s{2,}"), " ")
+        return doc.mutate().text(cleanDoc).build()
+    }
 }
