@@ -15,6 +15,7 @@ class ChatService(
     private val vectorStore: VectorStore
 ) {
     val log: Logger = LoggerFactory.getLogger(IngestionService::class.java)
+
     private companion object {
         const val SYSTEM_PROMPT_TEMPLATE = """
             You are a Docker security expert. Answer ONLY using the provided context.
@@ -27,22 +28,19 @@ class ChatService(
             {context}
         """
     }
+
     private val systemPromptTemplate = SystemPromptTemplate(SYSTEM_PROMPT_TEMPLATE)
 
     fun ask(question: String): String? {
-        if (!isDockerRelated(question)) {
-            log.warn("Non-Docker question detected: $question")
-            return "I specialize only in Docker-related topics. Please ask about Docker, its architecture or security."
-        }
         val relevantDocs = vectorStore.similaritySearch(
             SearchRequest
                 .builder()
-                .similarityThreshold(0.8)
+                .similarityThreshold(0.9)
                 .topK(6)
                 .query(question)
                 .build()
         )
-        if (relevantDocs.isNullOrEmpty() || !isDockerContext(relevantDocs)) {
+        if (relevantDocs.isNullOrEmpty()) {
             log.warn("No relevant Docker context found for: $question")
             return "I couldn't find relevant Docker information. Please ask a Docker-specific question."
         }
@@ -50,14 +48,15 @@ class ChatService(
         val context = relevantDocs.joinToString("\n")
         val systemMessage = systemPromptTemplate.create(mapOf("context" to context))
         log.info("Prompt for model: $systemMessage \n------\n $question")
-        return chatClientBuilder
-//            .defaultAdvisors(QuestionAnswerAdvisor(vectorStore))
+        val result = chatClientBuilder
             .build()
             .prompt()
             .system(systemMessage.contents)
             .user(question)
             .call()
             .content()
+        log.info(result)
+        return result
     }
 
     private fun isDockerRelated(question: String): Boolean {

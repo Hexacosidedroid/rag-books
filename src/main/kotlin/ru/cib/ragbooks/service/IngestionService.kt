@@ -39,6 +39,7 @@ class IngestionService(
         val cleanDoc = doc.text
             ?.replace(Regex("(\\w+[‐-])\\s*\\R\\s*(\\w+)"), "")
             ?.replace(Regex("\\s{2,}"), " ")
+            ?.replace(" ", " ")
         return doc.mutate().text(cleanDoc).build()
     }
 }
