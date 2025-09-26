@@ -35,7 +35,7 @@ class ChatService(
         val relevantDocs = vectorStore.similaritySearch(
             SearchRequest
                 .builder()
-                .similarityThreshold(0.9)
+                .similarityThreshold(0.2)
                 .topK(6)
                 .query(question)
                 .build()
@@ -48,6 +48,7 @@ class ChatService(
         val context = relevantDocs.joinToString("\n")
         val systemMessage = systemPromptTemplate.create(mapOf("context" to context))
         log.info("Prompt for model: $systemMessage \n------\n $question")
+        chatClientBuilder
         val result = chatClientBuilder
             .build()
             .prompt()
